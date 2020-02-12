@@ -5,8 +5,8 @@ minimum_values = 50  # Minimum number of points in a line to be considered signi
 maximum_values = 50  # Stream this many number of separate points file
 streaming_delay = 1  # Delay in seconds to generate a new values file for each trajectory (line) in output dir
 
-input_file = 'input/trajectory.txt'
-output_dir = 'output/'
+input_file = 'C:/Users/Samad-i5/largeDatasets/Porto/porto.txt'
+output_dir = 'C:/Users/Samad-i5/largeDatasets/Porto/stream/'
 
 lines_read = 0
 database = []

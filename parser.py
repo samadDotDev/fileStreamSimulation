@@ -1,23 +1,42 @@
 from csv import reader
 import time
-import sys
+import argparse
 
-minimum_values = 50  # Minimum number of points in a line to be considered significant trajectory (line)
-maximum_values = 50  # Stream this many number of separate points file
-streaming_delay = 1  # Delay in seconds to generate a new values file for each trajectory (line) in output dir
 
-input_file = 'input/trajectory.txt' # '/home/csgrads/samad028/largeDatasets/Porto/porto.txt'
-output_dir = 'output/'  # /home/csgrads/samad028/largeDatasets/Porto/stream/
+# Define defaults
 
-streaming_method = 'cumulative'   # {cumulative, individual}
+default_streaming_delay = 1  # Streaming Delay in seconds to generate a new values file for each trajectory (line) in output dir
+default_minimum_values = 50  # Minimum number of points in a line to be considered significant trajectory (line)
+default_maximum_values = 50  # Stream this many number of separate points file
+default_input_file = 'input/trajectory.txt' # '/home/csgrads/samad028/largeDatasets/Porto/porto.txt'
+default_output_dir = 'output/'  # /home/csgrads/samad028/largeDatasets/Porto/stream/
+default_cumulative = True
 
-if len(sys.argv) > 1:
-    if len(sys.argv) > 1: streaming_delay = sys.arg[1]
-    if len(sys.argv) > 2: minimum_values = sys.arg[2]
-    if len(sys.argv) > 3: maximum_values = sys.arg[3]
-    if len(sys.argv) > 4: input_file = sys.arg[4]
-    if len(sys.argv) > 5: output_dir = sys.arg[5]
-    if len(sys.argv) > 6: streaming_method = sys.arg[6]
+
+# A Useful approach to parse cmdline args
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-d", "--delay", default=default_streaming_delay, help="Streaming Delay in seconds to generate a new values file for each trajectory (line) in output dir")
+parser.add_argument("-min", "--min_val", default=default_minimum_values, help="Minimum number of points in a line to be considered significant trajectory (line)")
+parser.add_argument("-max", "--max_val", default=default_maximum_values, help="Stream this many number of separate points file")
+parser.add_argument("-i", "--input_file", default=default_input_file, help="Path to file of line-separated trajectories of comma-sep points which should be read and parsed for streaming")
+parser.add_argument("-o", "--output_dir", default=default_output_dir, help="Output Directory to stream to (will generate a new file every streaming delay)")
+parser.add_argument("-c", "--cumulative", default=default_cumulative, action="store_true", help="Stream Cumulatively (Append new points to previous points in new files)")
+
+
+# Read arguments from the command line
+
+args = parser.parse_args()
+
+streaming_delay = args.delay
+minimum_values = args.min_val
+maximum_values = args.max_val
+input_file = args.input_file
+output_dir = args.output_dir
+cumulative = args.cumulative
+
+print("Reading from: "+input_file)
+print("Streaming to: "+output_dir)
 
 
 lines_read = 0
@@ -56,7 +75,7 @@ for count, column in enumerate(columns):
 
     for rowNumber, rows in enumerate(column):
 
-        if streaming_method == 'cumulative':
+        if cumulative:
 
             # Nightly tweak: Append previous ones:
             for i in range(count):

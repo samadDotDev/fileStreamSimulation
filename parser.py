@@ -10,7 +10,7 @@ default_minimum_values = 50  # Minimum number of points in a line to be consider
 default_maximum_values = 50  # Stream this many number of separate points file
 default_input_file = 'input/trajectory.txt' # '/home/csgrads/samad028/largeDatasets/Porto/porto.txt'
 default_output_dir = 'output/'  # /home/csgrads/samad028/largeDatasets/Porto/stream/
-default_cumulative = True
+default_cumulative = False
 
 
 # A Useful approach to parse cmdline args
@@ -28,9 +28,9 @@ parser.add_argument("-c", "--cumulative", default=default_cumulative, action="st
 
 args = parser.parse_args()
 
-streaming_delay = args.delay
-minimum_values = args.min_val
-maximum_values = args.max_val
+streaming_delay = int(args.delay)
+minimum_values = int(args.min_val)
+maximum_values = int(args.max_val)
 input_file = args.input_file
 output_dir = args.output_dir
 cumulative = args.cumulative
@@ -78,7 +78,7 @@ for count, column in enumerate(columns):
         if cumulative:
 
             # Nightly tweak: Append previous ones:
-            for i in range(count):
+            for i in range(count+1):
                 f.write(columns[i][rowNumber])
                 if i < count:
                     f.write(';')

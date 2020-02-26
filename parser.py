@@ -22,6 +22,7 @@ parser.add_argument("-max", "--max_val", default=default_maximum_values, help="S
 parser.add_argument("-i", "--input_file", default=default_input_file, help="Path to file of line-separated trajectories of comma-sep points which should be read and parsed for streaming")
 parser.add_argument("-o", "--output_dir", default=default_output_dir, help="Output Directory to stream to (will generate a new file every streaming delay)")
 parser.add_argument("-c", "--cumulative", default=default_cumulative, action="store_true", help="Stream Cumulatively (Append new points to previous points in new files)")
+parser.add_argument("-l", "--limit", default=100000, help="Maximum number of values / trajectories to consider")
 
 
 # Read arguments from the command line
@@ -34,6 +35,7 @@ maximum_values = int(args.max_val)
 input_file = args.input_file
 output_dir = args.output_dir
 cumulative = args.cumulative
+limitMaxTrajectories = args.limit
 
 print("Reading from: "+input_file)
 print("Streaming to: "+output_dir)
@@ -69,11 +71,14 @@ print(f"Total values(points) considered: {len(columns)}")
 
 for count, column in enumerate(columns):
 
-    print("Streaming Value # " + str(count))
+    print("\nStreaming Value # " + str(count))
     file_name = output_dir + str(count) + '.txt'
     f = open(file_name, 'w+')
 
     for rowNumber, rows in enumerate(column):
+
+        if rowNumber > limitMaxTrajectories:
+            break
 
         if cumulative:
 

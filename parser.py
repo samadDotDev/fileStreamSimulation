@@ -73,7 +73,7 @@ for count in range(maximum_values):
         col.append(row[count])
     columns.append(col)
 
-print(f"Total values/traj considered: {len(columns)}")
+print("Total values/traj considered: {}".format(len(columns)))
 
 for count, column in enumerate(columns):
 

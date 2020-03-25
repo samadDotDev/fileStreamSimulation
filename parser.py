@@ -22,6 +22,7 @@ parser.add_argument("-max", "--max_val", default=default_maximum_values, help="S
 parser.add_argument("-i", "--input_file", default=default_input_file, help="Path to file of line-separated trajectories of comma-sep points which should be read and parsed for streaming")
 parser.add_argument("-o", "--output_dir", default=default_output_dir, help="Output Directory to stream to (will generate a new file every streaming delay)")
 parser.add_argument("-c", "--cumulative", default=default_cumulative, action="store_true", help="Stream Cumulatively (Append new points to previous points in new files)")
+parser.add_argument("-s", "--startFrom", default=0, help="Start from # of Trajectories upto limit defined by -l")
 parser.add_argument("-l", "--limit", default=100000, help="Maximum number of values / trajectories to consider")
 
 
@@ -36,6 +37,7 @@ input_file = args.input_file
 output_dir = args.output_dir
 cumulative = args.cumulative
 limitMaxTrajectories = int(args.limit)
+startFrom = int(args.startFrom)
 
 print("Reading from: "+input_file)
 print("Streaming to: "+output_dir)
@@ -59,9 +61,9 @@ with open(input_file) as in_file:
 
 
 if limitMaxTrajectories < len(database):
-    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limitMaxTrajectories))
+    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limitMaxTrajectories) + " starting from "+str(startFrom))
 else:
-    print("Total lines(trajectories) considered: " + str(len(database)))
+    print("Total lines(trajectories) considered: " + str(len(database)) + " starting from "+str(startFrom))
 
 columns = []
 
@@ -79,9 +81,10 @@ for count, column in enumerate(columns):
     file_name = output_dir + str(count) + '.txt'
     f = open(file_name, 'w+')
 
-    for rowNumber, rows in enumerate(column):
+    for rowNumber in range(startFrom, startFrom+min(len(column), limitMaxTrajectories)):
 
-        if rowNumber >= limitMaxTrajectories:
+        # If running over the available number of columns, break!
+        if rowNumber >= len(column):
             break
 
         if cumulative:
@@ -94,7 +97,7 @@ for count, column in enumerate(columns):
 
         else:
             # Streaming individual points for each trajectory separately in files (not appending previously streamed)
-            f.write(rows)
+            f.write(column[rowNumber])
 
         f.write('\n')
 

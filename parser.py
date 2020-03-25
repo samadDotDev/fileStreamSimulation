@@ -35,7 +35,7 @@ maximum_values = int(args.max_val)
 input_file = args.input_file
 output_dir = args.output_dir
 cumulative = args.cumulative
-limitMaxTrajectories = args.limit
+limitMaxTrajectories = int(args.limit)
 
 print("Reading from: "+input_file)
 print("Streaming to: "+output_dir)
@@ -57,7 +57,11 @@ with open(input_file) as in_file:
             # print(str(lines_read) + " " + str(line))
             database.append(line[:maximum_values])
 
-print("Total lines(trajectories) considered: " + str(len(database)))
+
+if limitMaxTrajectories < len(database):
+    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limitMaxTrajectories))
+else:
+    print("Total lines(trajectories) considered: " + str(len(database)))
 
 columns = []
 
@@ -67,7 +71,7 @@ for count in range(maximum_values):
         col.append(row[count])
     columns.append(col)
 
-print(f"Total values(points) considered: {len(columns)}")
+print(f"Total values/traj considered: {len(columns)}")
 
 for count, column in enumerate(columns):
 
@@ -77,7 +81,7 @@ for count, column in enumerate(columns):
 
     for rowNumber, rows in enumerate(column):
 
-        if rowNumber > limitMaxTrajectories:
+        if rowNumber >= limitMaxTrajectories:
             break
 
         if cumulative:

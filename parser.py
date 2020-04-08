@@ -10,7 +10,11 @@ default_minimum_values = 50  # Minimum number of points in a line to be consider
 default_maximum_values = 50  # Stream this many number of separate points file
 default_input_file = 'input/trajectory.txt' # '/home/csgrads/samad028/largeDatasets/Porto/porto.txt'
 default_output_dir = 'output/'  # /home/csgrads/samad028/largeDatasets/Porto/stream/
-default_cumulative = False
+default_cumulative = True
+default_start_from = '0'
+default_values_limit = '100000'
+default_delimiter = ';'
+default_stream_columns = True
 
 
 # A Useful approach to parse cmdline args
@@ -22,8 +26,10 @@ parser.add_argument("-max", "--max_val", default=default_maximum_values, help="S
 parser.add_argument("-i", "--input_file", default=default_input_file, help="Path to file of line-separated trajectories of comma-sep points which should be read and parsed for streaming")
 parser.add_argument("-o", "--output_dir", default=default_output_dir, help="Output Directory to stream to (will generate a new file every streaming delay)")
 parser.add_argument("-c", "--cumulative", default=default_cumulative, action="store_true", help="Stream Cumulatively (Append new points to previous points in new files)")
-parser.add_argument("-s", "--startFrom", default=0, help="Start from # of Trajectories upto limit defined by -l")
-parser.add_argument("-l", "--limit", default=100000, help="Maximum number of values / trajectories to consider")
+parser.add_argument("-s", "--startFrom", default=default_start_from, help="Start from # of Trajectories upto limit defined by -l")
+parser.add_argument("-l", "--limit", default=default_values_limit, help="Maximum number of values / trajectories to consider")
+parser.add_argument("-de", "--delimiter", default=default_delimiter, help="Delimiter that separates points in each line")
+parser.add_argument("-sc", "--stream_columns", default=default_stream_columns, help="Stream Columns (Values/Points) or Rows (Lines/Trajectories)")
 
 
 # Read arguments from the command line
@@ -36,8 +42,10 @@ maximum_values = int(args.max_val)
 input_file = args.input_file
 output_dir = args.output_dir
 cumulative = args.cumulative
-limitMaxTrajectories = int(args.limit)
+limit_max_rows = int(args.limit)
 startFrom = int(args.startFrom)
+delimiter = args.delimiter
+stream_columns = bool(args.stream_columns)
 
 print("Reading from: "+input_file)
 print("Streaming to: "+output_dir)
@@ -48,7 +56,7 @@ database = []
 
 with open(input_file) as in_file:
     # create a csv reader object
-    csv_reader = reader(in_file, delimiter=';')
+    csv_reader = reader(in_file, delimiter=delimiter)
 
     # go over each line
     for line in csv_reader:
@@ -60,46 +68,72 @@ with open(input_file) as in_file:
             database.append(line[:maximum_values])
 
 
-if limitMaxTrajectories < len(database):
-    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limitMaxTrajectories) + " starting from "+str(startFrom))
+if limit_max_rows < len(database):
+    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limit_max_rows) + " starting from " + str(startFrom))
 else:
     print("Total lines(trajectories) considered: " + str(len(database)) + " starting from "+str(startFrom))
 
-columns = []
 
-for count in range(maximum_values):
-    col = []
-    for row in database:
-        col.append(row[count])
-    columns.append(col)
+if stream_columns:
 
-print("Total values/traj considered: {}".format(len(columns)))
+    columns = []
 
-for count, column in enumerate(columns):
+    for count in range(maximum_values):
+        col = []
+        for row in database:
+            col.append(row[count])
+        columns.append(col)
 
-    print("\nStreaming Value # " + str(count))
-    file_name = output_dir + str(count) + '.txt'
-    f = open(file_name, 'w+')
+    print("Total values/line considered: {}".format(len(columns)))
 
-    for rowNumber in range(startFrom, startFrom+min(len(column), limitMaxTrajectories)):
+    for count, column in enumerate(columns):
 
-        # If running over the available number of columns, break!
-        if rowNumber >= len(column):
-            break
+        print("\nStreaming Value # " + str(count))
+        file_name = output_dir + str(count) + '.txt'
+        f = open(file_name, 'w+')
 
+        for rowNumber in range(startFrom, startFrom+min(len(column), limit_max_rows)):
+
+            # If running over the available number of columns, break!
+            if rowNumber >= len(column):
+                break
+
+            if cumulative:
+
+                # Nightly tweak: Append previous ones:
+                for i in range(count+1):
+                    f.write(columns[i][rowNumber])
+                    if i < count:
+                        f.write(delimiter)
+
+            else:
+                # Streaming individual points for each trajectory separately in files (not appending previously streamed)
+                f.write(column[rowNumber])
+
+            f.write('\n')
+
+        f.close()
+        time.sleep(streaming_delay)
+
+
+else:
+
+    # Row Streaming
+
+    for current_row in range(startFrom, startFrom+min(len(database), limit_max_rows)):
+
+        print("\nStreaming Row # " + str(current_row))
+        file_name = output_dir + str(current_row) + '.txt'
+        f = open(file_name, 'w+')
         if cumulative:
-
-            # Nightly tweak: Append previous ones:
-            for i in range(count+1):
-                f.write(columns[i][rowNumber])
-                if i < count:
-                    f.write(';')
-
+            for row_from in range(0,current_row):
+                row = database[current_row]
+                f.write(row)
+                f.write('\n')
         else:
-            # Streaming individual points for each trajectory separately in files (not appending previously streamed)
-            f.write(column[rowNumber])
+            row = database[current_row]
+            f.write(row)
+            f.write('\n')
 
-        f.write('\n')
-
-    f.close()
-    time.sleep(streaming_delay)
+        f.close()
+        time.sleep(streaming_delay)

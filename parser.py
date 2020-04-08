@@ -11,25 +11,25 @@ default_maximum_values = 50  # Stream this many number of separate points file
 default_input_file = 'input/trajectory.txt' # '/home/csgrads/samad028/largeDatasets/Porto/porto.txt'
 default_output_dir = 'output/'  # /home/csgrads/samad028/largeDatasets/Porto/stream/
 default_cumulative = True
-default_start_from = '0'
-default_values_limit = '100000'
+default_start_from_rows = '0'
+default_rows_limit = '100000'
 default_delimiter = ';'
 default_stream_columns = True
 
 
 # A Useful approach to parse cmdline args
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-d", "--delay", default=default_streaming_delay, help="Streaming Delay in seconds to generate a new values file for each trajectory (line) in output dir")
 parser.add_argument("-min", "--min_val", default=default_minimum_values, help="Minimum number of points in a line to be considered significant trajectory (line)")
 parser.add_argument("-max", "--max_val", default=default_maximum_values, help="Stream this many number of separate points file")
 parser.add_argument("-i", "--input_file", default=default_input_file, help="Path to file of line-separated trajectories of comma-sep points which should be read and parsed for streaming")
 parser.add_argument("-o", "--output_dir", default=default_output_dir, help="Output Directory to stream to (will generate a new file every streaming delay)")
 parser.add_argument("-c", "--cumulative", default=default_cumulative, action="store_true", help="Stream Cumulatively (Append new points to previous points in new files)")
-parser.add_argument("-s", "--startFrom", default=default_start_from, help="Start from # of Trajectories upto limit defined by -l")
-parser.add_argument("-l", "--limit", default=default_values_limit, help="Maximum number of values / trajectories to consider")
+parser.add_argument("-s", "--start_from", default=default_start_from_rows, help="Start from Row/Line/Trajectory Number upto limit defined by -l")
+parser.add_argument("-l", "--limit", default=default_rows_limit, help="Maximum number of values / trajectories to consider")
 parser.add_argument("-de", "--delimiter", default=default_delimiter, help="Delimiter that separates points in each line")
-parser.add_argument("-sc", "--stream_columns", default=default_stream_columns, help="Stream Columns (Values/Points) or Rows (Lines/Trajectories)")
+parser.add_argument("-sc", "--stream_columns", default=default_stream_columns, action="store_true", help="Stream Columns (Values/Points) or Rows (Lines/Trajectories)")
 
 
 # Read arguments from the command line
@@ -43,7 +43,7 @@ input_file = args.input_file
 output_dir = args.output_dir
 cumulative = args.cumulative
 limit_max_rows = int(args.limit)
-startFrom = int(args.startFrom)
+start_from = int(args.start_from)
 delimiter = args.delimiter
 stream_columns = bool(args.stream_columns)
 
@@ -63,7 +63,7 @@ with open(input_file) as in_file:
     # go over each line
     for line in csv_reader:
 
-        if line_num < startFrom:
+        if line_num < start_from:
             continue
         if line_num >= limit_max_rows:
             break
@@ -74,11 +74,13 @@ with open(input_file) as in_file:
             # print(str(lines_read) + " " + str(line))
             database.append(line[:maximum_values])
 
+        line_num += 1
+
 
 if limit_max_rows < len(database):
-    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limit_max_rows) + " starting from " + str(startFrom))
+    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limit_max_rows) + " starting from " + str(start_from))
 else:
-    print("Total lines(trajectories) considered: " + str(len(database)) + " starting from "+str(startFrom))
+    print("Total lines(trajectories) considered: " + str(len(database)) + " starting from " + str(start_from))
 
 
 if stream_columns:
@@ -99,7 +101,7 @@ if stream_columns:
         file_name = output_dir + str(count) + '.txt'
         f = open(file_name, 'w+')
 
-        for rowNumber in range(startFrom, startFrom+min(len(column), limit_max_rows)):
+        for rowNumber in range(start_from, start_from + min(len(column), limit_max_rows)):
 
             # If running over the available number of columns, break!
             if rowNumber >= len(column):

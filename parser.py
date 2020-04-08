@@ -58,8 +58,15 @@ with open(input_file) as in_file:
     # create a csv reader object
     csv_reader = reader(in_file, delimiter=delimiter)
 
+    line_num = 0
+
     # go over each line
     for line in csv_reader:
+
+        if line_num < startFrom:
+            continue
+        if line_num >= limit_max_rows:
+            break
 
         # if line is not empty
         if line and len(line) > minimum_values:
@@ -120,19 +127,19 @@ else:
 
     # Row Streaming
 
-    for current_row in range(startFrom, startFrom+min(len(database), limit_max_rows)):
+    for current_row in range(0, len(database)):
 
         print("\nStreaming Row # " + str(current_row))
         file_name = output_dir + str(current_row) + '.txt'
         f = open(file_name, 'w+')
         if cumulative:
-            for row_from in range(0,current_row):
-                row = database[current_row]
-                f.write(row)
+            for row_num in range(0, current_row+1):
+                row = database[row_num]
+                f.write(str(row))
                 f.write('\n')
         else:
             row = database[current_row]
-            f.write(row)
+            f.write(str(row))
             f.write('\n')
 
         f.close()

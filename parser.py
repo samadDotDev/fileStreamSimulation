@@ -8,8 +8,8 @@ import argparse
 default_streaming_delay = 1  # Streaming Delay in seconds to generate a new values file for each trajectory (line) in output dir
 default_minimum_values = 50  # Minimum number of points in a line to be considered significant trajectory (line)
 default_maximum_values = 50  # Stream this many number of separate points file
-default_input_file = 'input/trajectory.txt' # '/home/csgrads/samad028/largeDatasets/Porto/porto.txt'
-default_output_dir = 'output/'  # /home/csgrads/samad028/largeDatasets/Porto/stream/
+default_input_file = 'input/trajectory.txt'
+default_output_dir = 'output/'
 default_cumulative = True
 default_start_from_rows = '0'
 default_rows_limit = '100000'
@@ -63,9 +63,11 @@ with open(input_file) as in_file:
     # go over each line
     for line in csv_reader:
 
-        if line_num < start_from:
+        line_num += 1
+
+        if line_num <= start_from:
             continue
-        if line_num >= limit_max_rows:
+        if line_num > limit_max_rows:
             break
 
         # if line is not empty
@@ -73,8 +75,6 @@ with open(input_file) as in_file:
             lines_read += 1
             # print(str(lines_read) + " " + str(line))
             database.append(line[:maximum_values])
-
-        line_num += 1
 
 
 if limit_max_rows < len(database):

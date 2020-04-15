@@ -10,11 +10,11 @@ default_minimum_values = 50  # Minimum number of points in a line to be consider
 default_maximum_values = 50  # Stream this many number of separate points file
 default_input_file = 'input/trajectory.txt'
 default_output_dir = 'output/'
-default_cumulative = True
+default_cumulative = False
 default_start_from_rows = '0'
 default_rows_limit = '100000'
 default_delimiter = ';'
-default_stream_columns = True
+default_stream_columns = False
 
 
 # A Useful approach to parse cmdline args

@@ -7,7 +7,8 @@ import argparse
 
 default_streaming_delay = 1  # Streaming Delay in seconds to generate a new values file for each trajectory (line) in output dir
 default_minimum_values = 50  # Minimum number of points in a line to be considered significant trajectory (line)
-default_maximum_values = 50  # Stream this many number of separate points file
+default_batch_count = 50  # Stream this many number of separate points file
+default_batch_size = 1
 default_input_file = 'input/trajectory.txt'
 default_output_dir = 'output/'
 default_cumulative = False
@@ -22,7 +23,8 @@ default_stream_columns = False
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-d", "--delay", default=default_streaming_delay, help="Streaming Delay in seconds to generate a new values file for each trajectory (line) in output dir")
 parser.add_argument("-min", "--min_val", default=default_minimum_values, help="Minimum number of points in a line to be considered significant trajectory (line)")
-parser.add_argument("-max", "--max_val", default=default_maximum_values, help="Stream this many number of separate points file")
+parser.add_argument("-bc", "--batch_count", default=default_batch_count, help="Number of batches to be streamed as separate points file")
+parser.add_argument("-bs", "--batch_size", default=default_batch_size, help="Number of points or to be streamed per batch")
 parser.add_argument("-i", "--input_file", default=default_input_file, help="Path to file of line-separated trajectories of comma-sep points which should be read and parsed for streaming")
 parser.add_argument("-o", "--output_dir", default=default_output_dir, help="Output Directory to stream to (will generate a new file every streaming delay)")
 parser.add_argument("-c", "--cumulative", default=default_cumulative, action="store_true", help="Stream Cumulatively (Append new points to previous points in new files)")
@@ -38,7 +40,8 @@ args = parser.parse_args()
 
 streaming_delay = int(args.delay)
 minimum_values = int(args.min_val)
-maximum_values = int(args.max_val)
+batch_count = int(args.batch_count)
+batch_size = int(args.batch_size)
 input_file = args.input_file
 output_dir = args.output_dir
 cumulative = args.cumulative
@@ -53,6 +56,7 @@ print("Streaming to: "+output_dir)
 
 lines_read = 0
 database = []
+points_count_freq = {}
 
 with open(input_file) as in_file:
     # create a csv reader object
@@ -65,59 +69,86 @@ with open(input_file) as in_file:
 
         line_num += 1
 
+        if len(line) in points_count_freq:
+            points_count_freq[len(line)] += 1
+        else:
+            points_count_freq[len(line)] = 1
+
         if line_num <= start_from:
             continue
-        if line_num > limit_max_rows:
-            break
 
         # if line is not empty
-        if line and len(line) > minimum_values:
+        if line and len(line) >= minimum_values:
             lines_read += 1
-            # print(str(lines_read) + " " + str(line))
-            database.append(line[:maximum_values])
+            database.append(line[:batch_count*batch_size])
 
 
 if limit_max_rows < len(database):
-    print("Lines(trajectories) present: " + str(len(database)) + ", Considered: " + str(limit_max_rows) + " starting from " + str(start_from))
+    print(f"{len(database)} Eligible Lines(trajectories with {minimum_values} minimum pts) "
+          f"present starting from line #{start_from}, "
+          f"Limiting to {limit_max_rows}")
+    database = database[:limit_max_rows]
 else:
-    print("Total lines(trajectories) considered: " + str(len(database)) + " starting from " + str(start_from))
+    print(f"Total lines(trajectories) considered: {len(database)} starting from {start_from}")
+
+# Generate some stats for this dataset
+keys = [key for key in sorted(points_count_freq.keys(), reverse=True)]
+freq_deltas = [points_count_freq[key] for key in sorted(points_count_freq.keys(), reverse=True)]
+
+freq_leasts = []
+cumulative_freq = 0
+for idx, freq in enumerate(freq_deltas):
+    cumulative_freq += freq
+    freq_leasts.append(cumulative_freq)
+
+points_count_freq_leasts = list(zip(keys, freq_leasts))
+
+print("Stats of Dataset (Least Pts Count: # of Trajectories): ", points_count_freq_leasts)
 
 
 if stream_columns:
 
     columns = []
 
-    for count in range(maximum_values):
+    for count in range(batch_count * batch_size):
         col = []
         for row in database:
-            col.append(row[count])
+            if count < len(row):
+                col.append(row[count])
+            else:
+                col.append(None)
         columns.append(col)
 
-    print("Total values/line considered: {}".format(len(columns)))
+    print(f"Total values/line considered: {len(columns)}")
 
-    for count, column in enumerate(columns):
-
-        print("\nStreaming Value # " + str(count))
-        file_name = output_dir + str(count) + '.txt'
+    batch_number = 0
+    for col_i in range(0, len(columns), batch_size):
+        batch_number += 1
+        print(f"\nStreaming Batch # {batch_number}")
+        file_name = output_dir + str(col_i) + '.txt'
         f = open(file_name, 'w+')
 
-        for rowNumber in range(start_from, start_from + min(len(column), limit_max_rows)):
-
-            # If running over the available number of columns, break!
-            if rowNumber >= len(column):
-                break
+        for rowNumber in range(start_from, start_from + min(len(database), limit_max_rows)):
 
             if cumulative:
 
-                # Nightly tweak: Append previous ones:
-                for i in range(count+1):
-                    f.write(columns[i][rowNumber])
-                    if i < count:
+                for i in range(col_i+batch_size):
+                    point = columns[i][rowNumber]
+                    if point is None:
+                        break
+                    f.write(point)
+                    if i < (col_i+batch_size-1):
                         f.write(delimiter)
 
             else:
                 # Streaming individual points for each trajectory separately in files (not appending previously streamed)
-                f.write(column[rowNumber])
+                for i in range(col_i, col_i+batch_size):
+                    point = columns[i][rowNumber]
+                    if point is None:
+                        break
+                    f.write(point)
+                    if i < (col_i+batch_size-1):
+                        f.write(delimiter)
 
             f.write('\n')
 
